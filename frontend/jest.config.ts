@@ -11,4 +11,5 @@ module.exports = {
   },
   testPathIgnorePatterns: ["/node_modules/", "/.next/"],
   moduleFileExtensions: ["ts", "tsx", "js", "jsx"],
+  testMatch: ["**/__tests__/**/*.test.(ts|tsx)"],
 };

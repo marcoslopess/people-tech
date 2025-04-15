@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import EditPage from "./frontend/src/pages/edit/[id]";
+import EditPage from "../[id]";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SnackbarProvider } from "@/contexts/SnackbarContext";
 import * as api from "@/services/api";

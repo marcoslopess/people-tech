@@ -1,114 +1,117 @@
-import {
-  Container,
-  Typography,
-  Table,
-  TableHead,
-  TableRow,
-  TableCell,
-  TableBody,
-  Button,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  IconButton,
-} from "@mui/material";
-import { useSnackbar } from "../contexts/SnackbarContext";
-import { useQuery } from "@tanstack/react-query";
-import { getUsers, deleteUser } from "../services/api";
-import { useState } from "react";
-import { User } from "types/User";
-import EditIcon from "@mui/icons-material/Edit";
-import DeleteIcon from "@mui/icons-material/Delete";
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
+import { Box, Button, Container, Paper, TextField, Typography, CircularProgress } from "@mui/material";
+import api, { login } from "@/services/api";
+import { useSnackbar } from "@/contexts/SnackbarContext";
 
-export default function Home() {
+export default function LoginOrCreate() {
+  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [loading, setLoading] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [usersExist, setUsersExist] = useState<boolean | null>(null);
+  const { showMessage } = useSnackbar();
   const router = useRouter();
 
-  const handleEdit = (id: number) => {
-    router.push(`/edit/${id}`);
-  };
-  const { showMessage } = useSnackbar();
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["users"],
-    queryFn: getUsers,
-  });
+  useEffect(() => {
+    const checkAuthAndUser = async () => {
+      const token = localStorage.getItem("token");
 
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+      if (token) {
+        try {
+          await api.get("/auth/profile", {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          router.push("/home");
+          return;
+        } catch {
+          localStorage.removeItem("token");
+        }
+      }
 
-  const handleOpenDialog = (id: number) => {
-    setSelectedUserId(id);
-    setOpenDialog(true);
-  };
+      try {
+        const res = await api.get("/auth/exists");
+        setUsersExist(res.data.exists);
+      } catch {
+        setUsersExist(false);
+      } finally {
+        setChecking(false);
+      }
+    };
 
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-    setSelectedUserId(null);
-  };
+    checkAuthAndUser();
+  }, [router]);
 
-  const handleConfirmDelete = async () => {
-    if (selectedUserId !== null) {
-      await deleteUser(selectedUserId);
-      showMessage("Usuário excluído com sucesso!", "success");
-      await refetch();
-      handleCloseDialog();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      let res;
+
+      if (usersExist) {
+        res = await login(form);
+        showMessage("Login realizado com sucesso!", "success");
+      } else {
+        res = await api.post("/auth/login", form);
+        showMessage("Usuário criado com sucesso!", "success");
+      }
+
+      localStorage.setItem("token", res.data.access_token);
+      router.push("/home");
+    } catch (err: any) {
+      const message = err?.response?.data?.message?.[0] ?? err?.response?.data?.message ?? "Erro ao autenticar";
+      showMessage(message, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  return (
-    <Container>
-      <Typography variant="h4" align="center" gutterBottom sx={{ mt: 2 }}>
-        Lista de Usuários
-      </Typography>
-
-      {isLoading ? (
+  if (checking) {
+    return (
+      <Container sx={{ mt: 8, display: "flex", justifyContent: "center" }}>
         <CircularProgress />
-      ) : (
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Nome</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Ações</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {data?.map((user: User) => (
-              <TableRow key={user.id}>
-                <TableCell>{user.name}</TableCell>
-                <TableCell>{user.email}</TableCell>
-                <TableCell>
-                  <IconButton color="primary" onClick={() => handleEdit(user.id)}>
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton color="error" onClick={() => handleOpenDialog(user.id)}>
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      </Container>
+    );
+  }
 
-      {/* Diálogo de confirmação */}
-      <Dialog open={openDialog} onClose={handleCloseDialog}>
-        <DialogTitle>Confirmar Exclusão</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Tem certeza que deseja excluir este usuário? Essa ação não pode ser desfeita.
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Cancelar</Button>
-          <Button onClick={handleConfirmDelete} color="error">
-            Confirmar
+  return (
+    <Container maxWidth="sm">
+      <Paper elevation={3} sx={{ p: 4, mt: 8 }}>
+        <Typography variant="h5" align="center" gutterBottom>
+          {usersExist ? "Login" : "Criação do primeiro usuário"}
+        </Typography>
+        <Box component="form" onSubmit={handleSubmit} sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          {!usersExist && (
+            <TextField
+              label="Nome"
+              required
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              fullWidth
+            />
+          )}
+          <TextField
+            label="Email"
+            type="email"
+            required
+            value={form.email}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            fullWidth
+          />
+          <TextField
+            label="Senha"
+            type="password"
+            required
+            value={form.password}
+            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            fullWidth
+          />
+          <Button type="submit" variant="contained" fullWidth disabled={loading}>
+            {loading ? (usersExist ? "Entrando..." : "Criando usuário...") : usersExist ? "Entrar" : "Criar usuário"}
           </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </Paper>
     </Container>
   );
 }

@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
-import { RedisModule } from '../redis/redis.module'; // 👈 IMPORTANTE!
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
-  imports: [RedisModule], // 👈 AQUI ESTAVA FALTANDO
+  imports: [RedisModule],
   controllers: [UsersController],
   providers: [UsersService],
+  exports: [UsersService],
 })
 export class UsersModule {}

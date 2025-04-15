@@ -1,8 +1,19 @@
 import { render, screen, waitFor } from "@testing-library/react";
-import Home from "../index";
+import Home from "../home";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SnackbarProvider } from "@/contexts/SnackbarContext";
 import * as api from "@/services/api";
+import { useRouter } from "next/router";
+
+jest.mock("next/router", () => ({
+  useRouter: jest.fn(),
+}));
+
+beforeEach(() => {
+  (useRouter as jest.Mock).mockReturnValue({
+    push: jest.fn(),
+  });
+});
 
 jest.mock("@/services/api");
 

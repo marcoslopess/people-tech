@@ -10,6 +10,7 @@ type FormProps = {
   defaultValues?: {
     name: string;
     email: string;
+    password: string;
   };
 };
 
@@ -23,6 +24,7 @@ export function UserForm({ onSubmit, defaultValues }: FormProps) {
     defaultValues: {
       name: defaultValues?.name ?? "",
       email: defaultValues?.email ?? "",
+      password: defaultValues?.password ?? "",
     },
   });
 
@@ -58,12 +60,27 @@ export function UserForm({ onSubmit, defaultValues }: FormProps) {
         {...register("email", {
           required: "E-mail obrigatório",
           pattern: {
-            value: /^\S+@\S+$/i,
+            value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
             message: "E-mail inválido",
           },
         })}
         error={!!errors.email}
         helperText={errors.email?.message?.toString()}
+        sx={{ mb: 2 }}
+      />
+      <TextField
+        fullWidth
+        label="Senha"
+        type="password"
+        {...register("password", {
+          required: "Senha obrigatória",
+          minLength: {
+            value: 6,
+            message: "A senha deve ter pelo menos 6 caracteres",
+          },
+        })}
+        error={!!errors.password}
+        helperText={errors.password?.message?.toString()}
         sx={{ mb: 2 }}
       />
 

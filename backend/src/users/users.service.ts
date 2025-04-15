@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto, UpdateUserDto } from './dto';
 import { RedisService } from '../redis/redis.service';
@@ -10,10 +11,22 @@ export class UsersService {
     private readonly redisService: RedisService,
   ) {}
 
+  async hasAny(): Promise<{ exists: boolean }> {
+    const count = await this.prisma.user.count();
+    return { exists: count > 0 };
+  }
+
   async create(data: CreateUserDto) {
-    const user = await this.prisma.user.create({ data });
-    await this.redisService.getClient().del('users');
-    return user;
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        ...data,
+        password: hashedPassword,
+      },
+    });
+
+    const { password, ...result } = user;
+    return result;
   }
 
   async findAll() {
@@ -36,6 +49,12 @@ export class UsersService {
 
     await client.set(`user:${id}`, JSON.stringify(user), 'EX', 60);
     return user;
+  }
+
+  async findByEmail(email: string) {
+    return this.prisma.user.findUnique({
+      where: { email },
+    });
   }
 
   async update(id: number, data: UpdateUserDto) {
