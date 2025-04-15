@@ -14,14 +14,17 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() dto: LoginDto) {
-    const users = await this.usersService.findAll();
+    try {
+      const { exists } = await this.usersService.hasAny();
 
-    if (users.length === 0) {
-      // Criação do primeiro usuário
-      return this.authService.createFirstUser(dto);
+      if (!exists) {
+        return this.authService.createFirstUser(dto);
+      }
+
+      return this.authService.login(dto);
+    } catch (error) {
+      return error;
     }
-
-    return this.authService.login(dto);
   }
 
   @Get('exists')

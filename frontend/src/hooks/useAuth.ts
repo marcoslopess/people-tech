@@ -37,7 +37,10 @@ export const useCheckExists = () =>
 
 export const useLoginMutation = () => {
   return useMutation({
-    mutationFn: (data: Login) => api.post("/auth/login", data).then((res) => res.data),
+    mutationFn: async (data: Login) => {
+      const res = await api.post("/auth/login", data);
+      return res.data;
+    },
   });
 };
 

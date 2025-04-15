@@ -8,6 +8,7 @@ describe('AuthController (e2e)', () => {
   let app: INestApplication;
   let prisma: PrismaService;
   let token: string;
+  const email = `teste_${Date.now()}@email.com`;
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -39,7 +40,7 @@ describe('AuthController (e2e)', () => {
   it('POST /auth/login - deve criar o primeiro usuário', async () => {
     const res = await request(app.getHttpServer()).post('/auth/login').send({
       name: 'Usuário Teste',
-      email: 'teste@email.com',
+      email,
       password: '123456',
     });
 
@@ -56,7 +57,7 @@ describe('AuthController (e2e)', () => {
 
   it('POST /auth/login - deve logar com usuário existente', async () => {
     const res = await request(app.getHttpServer()).post('/auth/login').send({
-      email: 'teste@email.com',
+      email,
       password: '123456',
     });
 
@@ -71,7 +72,40 @@ describe('AuthController (e2e)', () => {
       .set('Authorization', `Bearer ${token}`);
 
     expect(res.status).toBe(200);
-    expect(res.body.email).toBe('teste@email.com');
-    expect(res.body.sub).toBeDefined(); // sub = id
+    expect(res.body.email).toBe(email);
+    expect(res.body.sub).toBeDefined();
+  });
+
+  it('POST /auth/login - deve falhar com senha incorreta', async () => {
+    const res = await request(app.getHttpServer()).post('/auth/login').send({
+      email,
+      password: 'senhaErrada',
+    });
+
+    expect(res.status).toBe(403);
+    expect(res.body.message).toBe('Credenciais inválidas');
+  });
+
+  it('GET /auth/profile - deve falhar sem token', async () => {
+    const res = await request(app.getHttpServer()).get('/auth/profile');
+    expect(res.status).toBe(401);
+  });
+
+  it('POST /auth/login - deve criar o primeiro usuário com nome padrão', async () => {
+    await prisma.user.deleteMany();
+
+    const res = await request(app.getHttpServer()).post('/auth/login').send({
+      email: 'semnome@email.com',
+      password: '123456',
+    });
+
+    expect(res.status).toBe(201);
+    expect(res.body.access_token).toBeDefined();
+
+    const user = await prisma.user.findUnique({
+      where: { email: 'semnome@email.com' },
+    });
+
+    expect(user?.name).toBe('Novo Usuário');
   });
 });

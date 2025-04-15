@@ -28,7 +28,6 @@ export class UsersController {
     return this.service.create(createUserDto);
   }
 
-  //  @UseGuards(AuthGuard('jwt'))
   @Get()
   @ApiOperation({ summary: 'Listar todos os usuários' })
   @ApiResponse({ status: 200, description: 'Lista de usuários retornada' })

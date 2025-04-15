@@ -17,6 +17,8 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    await this.client.quit();
+    if (this.client) {
+      await this.client.quit();
+    }
   }
 }

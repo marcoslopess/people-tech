@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  UnauthorizedException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, ForbiddenException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from '../users/users.service';
@@ -14,32 +10,41 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
   ) {}
-
-  async validateUser(email: string, pass: string) {
-    const user = await this.usersService.findByEmail(email);
-    if (user && (await bcrypt.compare(pass, user.password))) {
-      const { password, ...result } = user;
-      return result;
-    }
-    return null;
-  }
+  private readonly logger = new Logger(AuthService.name);
 
   async login(dto: LoginDto) {
+    this.logger.log(`Tentando login com email: ${dto.email}`);
+
     const user = await this.usersService.findByEmail(dto.email);
-    if (!user || !(await bcrypt.compare(dto.password, user.password))) {
-      throw new UnauthorizedException('Credenciais inválidas');
+
+    if (!user) {
+      this.logger.warn(`Usuário não encontrado: ${dto.email}`);
+      throw new ForbiddenException('Credenciais inválidas');
+    }
+
+    const senhaCorreta = await bcrypt.compare(dto.password, user.password);
+
+    if (!senhaCorreta) {
+      this.logger.warn(`Senha incorreta para email: ${dto.email}`);
+      throw new ForbiddenException('Credenciais inválidas');
     }
 
     return this.generateToken(user);
   }
 
   async createFirstUser(dto: any) {
-    const users = await this.usersService.findAll();
-    if (users.length > 0) {
-      throw new ForbiddenException('Usuário já existe');
+    this.logger.warn(`Criando o primeiro usuário`);
+    const { exists } = await this.usersService.hasAny();
+    if (exists) {
+      throw new ForbiddenException('Primeiro usuário já existe');
     }
 
-    const newUser = await this.usersService.create(dto);
+    const userToCreate = {
+      ...dto,
+      name: dto.name ?? 'Novo Usuário',
+    };
+
+    const newUser = await this.usersService.create(userToCreate);
     return this.generateToken(newUser);
   }
 
