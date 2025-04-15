@@ -2,72 +2,47 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import { Box, Button, Container, Paper, TextField, Typography, CircularProgress } from "@mui/material";
-import api, { login } from "@/services/api";
+import { useLoginMutation, useCreateFirstUserMutation, useCheckExists, useProfile } from "@/hooks/useAuth";
 import { useSnackbar } from "@/contexts/SnackbarContext";
 
 export default function LoginOrCreate() {
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [loading, setLoading] = useState(false);
-  const [checking, setChecking] = useState(true);
-  const [usersExist, setUsersExist] = useState<boolean | null>(null);
-  const { showMessage } = useSnackbar();
+  const [form, setForm] = useState<any>({ name: "", email: "", password: "" });
   const router = useRouter();
+  const { showMessage } = useSnackbar();
+
+  const { data: usersExist, isLoading: checkingUser } = useCheckExists();
+  const { isLoading: checkingProfile } = useProfile();
+
+  const loginMutation = useLoginMutation();
+  const createFirstMutation = useCreateFirstUserMutation();
 
   useEffect(() => {
-    const checkAuthAndUser = async () => {
-      const token = localStorage.getItem("token");
-
-      if (token) {
-        try {
-          await api.get("/auth/profile", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          router.push("/home");
-          return;
-        } catch {
-          localStorage.removeItem("token");
-        }
-      }
-
-      try {
-        const res = await api.get("/auth/exists");
-        setUsersExist(res.data.exists);
-      } catch {
-        setUsersExist(false);
-      } finally {
-        setChecking(false);
-      }
-    };
-
-    checkAuthAndUser();
-  }, [router]);
+    if (!checkingProfile && localStorage.getItem("token")) {
+      router.push("/home");
+    }
+  }, [checkingProfile, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-
     try {
       let res;
-
       if (usersExist) {
-        res = await login(form);
+        res = await loginMutation.mutateAsync(form);
         showMessage("Login realizado com sucesso!", "success");
       } else {
-        res = await api.post("/auth/login", form);
+        res = await createFirstMutation.mutateAsync(form);
         showMessage("Usuário criado com sucesso!", "success");
       }
 
-      localStorage.setItem("token", res.data.access_token);
+      localStorage.setItem("token", res.access_token);
       router.push("/home");
     } catch (err: any) {
       const message = err?.response?.data?.message?.[0] ?? err?.response?.data?.message ?? "Erro ao autenticar";
       showMessage(message, "error");
-    } finally {
-      setLoading(false);
     }
   };
 
-  if (checking) {
+  if (checkingUser || checkingProfile) {
     return (
       <Container sx={{ mt: 8, display: "flex", justifyContent: "center" }}>
         <CircularProgress />
@@ -85,30 +60,30 @@ export default function LoginOrCreate() {
           {!usersExist && (
             <TextField
               label="Nome"
-              required
               value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              onChange={(e) => setForm((f: any) => ({ ...f, name: e.target.value }))}
               fullWidth
+              required
             />
           )}
           <TextField
             label="Email"
             type="email"
-            required
             value={form.email}
-            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+            onChange={(e) => setForm((f: any) => ({ ...f, email: e.target.value }))}
             fullWidth
+            required
           />
           <TextField
             label="Senha"
             type="password"
-            required
             value={form.password}
-            onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+            onChange={(e) => setForm((f: any) => ({ ...f, password: e.target.value }))}
             fullWidth
+            required
           />
-          <Button type="submit" variant="contained" fullWidth disabled={loading}>
-            {loading ? (usersExist ? "Entrando..." : "Criando usuário...") : usersExist ? "Entrar" : "Criar usuário"}
+          <Button type="submit" variant="contained" fullWidth>
+            {usersExist ? "Entrar" : "Criar usuário"}
           </Button>
         </Box>
       </Paper>

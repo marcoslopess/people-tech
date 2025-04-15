@@ -1,23 +1,20 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useRouter } from "next/router";
-import { useQuery } from "@tanstack/react-query";
-import { getUser, updateUser } from "../../services/api";
 import { Box, Container, Typography } from "@mui/material";
 import { UserForm } from "../../components/UserForm";
+import { useUser, useUpdateUser } from "@/hooks/useUsers";
 import { User } from "@/types/User";
 
 export default function EditUser() {
   const router = useRouter();
   const { id } = router.query;
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["user", id],
-    queryFn: () => getUser(Number(id)),
-    enabled: !!id,
-  });
+  const { data, isLoading } = useUser(Number(id));
+  const updateUser = useUpdateUser();
 
   const handleUpdate = async (formData: User) => {
-    await updateUser(Number(id), formData);
-    router.push("/");
+    const { id, createdAt, updatedAt, ...filteredData } = formData;
+    await updateUser.mutateAsync({ id: Number(id), data: filteredData });
+    router.push("/home");
   };
 
   return (
@@ -28,7 +25,7 @@ export default function EditUser() {
       {!isLoading && data && (
         <Box display="flex" justifyContent="center" alignItems="center" flexDirection="column" sx={{ mt: 4 }}>
           <Box width="100%" maxWidth={500}>
-            <UserForm onSubmit={handleUpdate} defaultValues={data} />
+            <UserForm onSubmit={handleUpdate} defaultValues={data} isEdit />
           </Box>
         </Box>
       )}

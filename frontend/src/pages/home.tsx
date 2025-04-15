@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import {
   Container,
   Typography,
@@ -16,28 +17,25 @@ import {
   IconButton,
 } from "@mui/material";
 import { useSnackbar } from "../contexts/SnackbarContext";
-import { useQuery } from "@tanstack/react-query";
-import { getUsers, deleteUser } from "../services/api";
 import { useState } from "react";
 import { User } from "types/User";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { useRouter } from "next/router";
+import { useUsers, useDeleteUser } from "@/hooks/useUsers";
 
 export default function Home() {
   const router = useRouter();
+  const { showMessage } = useSnackbar();
+  const { data: users, isLoading, refetch } = useUsers();
+  const deleteUserMutation = useDeleteUser();
+
+  const [openDialog, setOpenDialog] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   const handleEdit = (id: number) => {
     router.push(`/edit/${id}`);
   };
-  const { showMessage } = useSnackbar();
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["users"],
-    queryFn: getUsers,
-  });
-
-  const [openDialog, setOpenDialog] = useState(false);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
 
   const handleOpenDialog = (id: number) => {
     setSelectedUserId(id);
@@ -51,10 +49,15 @@ export default function Home() {
 
   const handleConfirmDelete = async () => {
     if (selectedUserId !== null) {
-      await deleteUser(selectedUserId);
-      showMessage("Usuário excluído com sucesso!", "success");
-      await refetch();
-      handleCloseDialog();
+      try {
+        await deleteUserMutation.mutateAsync(selectedUserId);
+        showMessage("Usuário excluído com sucesso!", "success");
+        await refetch();
+      } catch (error) {
+        showMessage("Erro ao excluir usuário", "error");
+      } finally {
+        handleCloseDialog();
+      }
     }
   };
 
@@ -76,15 +79,15 @@ export default function Home() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {data?.map((user: User) => (
+            {users?.map((user: User) => (
               <TableRow key={user.id}>
                 <TableCell>{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>
                 <TableCell>
-                  <IconButton color="primary" onClick={() => handleEdit(user.id)}>
+                  <IconButton color="primary" onClick={() => handleEdit(user.id!)}>
                     <EditIcon />
                   </IconButton>
-                  <IconButton color="error" aria-label="Excluir" onClick={() => handleOpenDialog(user.id)}>
+                  <IconButton color="error" aria-label="Excluir" onClick={() => handleOpenDialog(user.id!)}>
                     <DeleteIcon />
                   </IconButton>
                 </TableCell>
@@ -94,7 +97,6 @@ export default function Home() {
         </Table>
       )}
 
-      {/* Diálogo de confirmação */}
       <Dialog open={openDialog} onClose={handleCloseDialog}>
         <DialogTitle>Confirmar Exclusão</DialogTitle>
         <DialogContent>

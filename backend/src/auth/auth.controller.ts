@@ -1,18 +1,9 @@
-import {
-  Controller,
-  Post,
-  Body,
-  UnauthorizedException,
-  Get,
-  UseGuards,
-  Req,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../users/users.service';
 import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { Request as ReqDecorator } from '@nestjs/common';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -22,18 +13,15 @@ export class AuthController {
   ) {}
 
   @Post('login')
-  async login(@Body() dto: any) {
+  async login(@Body() dto: LoginDto) {
     const users = await this.usersService.findAll();
+
     if (users.length === 0) {
       // Criação do primeiro usuário
-      const newUser = await this.usersService.create(dto);
-      return this.authService.login(newUser);
+      return this.authService.createFirstUser(dto);
     }
 
-    const user = await this.authService.validateUser(dto.email, dto.password);
-    if (!user) throw new UnauthorizedException('Credenciais inválidas');
-
-    return this.authService.login(user);
+    return this.authService.login(dto);
   }
 
   @Get('exists')
