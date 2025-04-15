@@ -101,7 +101,7 @@ npm run dev
 
 ```
 backend/
-├── logs/                   # Arquivos de log (Winston)
+├── logs/
 │   ├── combined.log
 │   └── error.log
 ├── src/
@@ -109,7 +109,7 @@ backend/
 │   ├── users/
 │   ├── prisma/
 │   ├── redis/
-│   └── logger/             # Configuração Winston
+│   └── logger/
 ├── prisma/
 │   ├── migrations/
 │   └── schema.prisma
